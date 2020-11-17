@@ -18,8 +18,8 @@ tf.set_random_seed(SEED)
 GYM_SEED=8
 #
 session_conf = tf.ConfigProto(
-      intra_op_parallelism_threads=3,
-      inter_op_parallelism_threads=3)
+      intra_op_parallelism_threads=2,
+      inter_op_parallelism_threads=2)
 
 env = gym.make("MsPacman-v0")
 obs = env.reset()
@@ -55,7 +55,7 @@ class DQN(object):
 		with tf.variable_scope(name):
 			with tf.name_scope("inputs"):
 				# Jieda note: state is preprocessd 80*80*1 array
-				self.inputs = tf.placeholder(tf.float32, [None, *state_size], name="inputs")
+				self.inputs = tf.placeholder(tf.float32, [None, input_height, input_width, input_channels], name="inputs")
 
 			with tf.name_scope("conv1"):
 				self.conv1 = tf.layers.conv2d(
@@ -113,7 +113,6 @@ class DQN(object):
 		trainable_vars_by_name = {var.name[len(scope_name):]: var
 		                          for var in trainable_vars}
 		return trainable_vars_by_name
-
 #
 tf.reset_default_graph()
 X_state = tf.placeholder(tf.float32, shape=[None, input_height, input_width, input_channels])
@@ -221,7 +220,7 @@ total_reward=0
 game_length=0
 game_counter=0
 
-checkpoint_path="./mspacman_dqn_run3_nohup.ckpt"
+checkpoint_path="./mspacman_dqn_run5_nohup.ckpt"
 
 with tf.Session(config=session_conf) as sess:
 	if os.path.isfile(checkpoint_path + ".index"):
@@ -328,7 +327,7 @@ with tf.Session(config=session_conf) as sess:
 		if step % save_steps == 0:
 			saver.save(sess, checkpoint_path)
 			# save output to text
-			with open('pacman_run3_each_episode_reward.txt', 'w') as file:
+			with open('pacman_run5_each_episode_reward.txt', 'w') as file:
 				file.write('%s\n' % final_each_episode_rwds)
-			with open('pacman_run3_mean_max_q.txt', 'w') as file:
+			with open('pacman_run5_mean_max_q.txt', 'w') as file:
 				file.write('%s\n' % final_mean_max_q)
