@@ -19,8 +19,8 @@ GYM_SEED=567
 
 #
 session_conf = tf.ConfigProto(
-      intra_op_parallelism_threads=4,
-      inter_op_parallelism_threads=4)
+      intra_op_parallelism_threads=3,
+      inter_op_parallelism_threads=3)
 #
 env = gym.make("Breakout-v0")
 obs = env.reset()
