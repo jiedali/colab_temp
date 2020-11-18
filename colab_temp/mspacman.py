@@ -10,12 +10,12 @@ import random
 from collections import deque
 import matplotlib.pyplot as plt
 # choose a GPU card
-os.environ['CUDA_VISIBLE_DEVICES']="0"
+os.environ['CUDA_VISIBLE_DEVICES']="7"
 
 # Set seed for tensorflow
-SEED=2
+SEED=1
 tf.set_random_seed(SEED)
-GYM_SEED=8
+GYM_SEED=1
 #
 session_conf = tf.ConfigProto(
       intra_op_parallelism_threads=2,
@@ -34,7 +34,7 @@ def preprocess(obs):
 
 # This is now exactly the same as Ghani's CNN settings
 # need to adjust to 80**)
-learning_rate=0.001
+learning_rate=0.00025
 # which is height? Which is width?
 state_size=[88,80,1]
 action_size=env.action_space.n
@@ -42,6 +42,9 @@ n_outputs=action_size
 input_height=88
 input_width=80
 input_channels=1
+
+rmsprop_decay=0.99
+rmsprop_constant=1e-6
 
 
 # Define a Q network with input size of [88,80], and an output size of size of action space 9
@@ -60,25 +63,25 @@ class DQN(object):
 			with tf.name_scope("conv1"):
 				self.conv1 = tf.layers.conv2d(
 					inputs=self.inputs, filters=32, kernel_size=[8, 8], strides=4,
-					kernel_initializer=tf.variance_scaling_initializer(scale=2),
-					padding="VALID", activation=tf.nn.relu, use_bias=False, name='conv1')
+					kernel_initializer=tf.variance_scaling_initializer(),
+					padding="SAME", name='conv1')
 
 				self.conv1_out = tf.nn.relu(self.conv1, name='conv1_out')
 
 			with tf.name_scope("conv2"):
 				self.conv2 = tf.layers.conv2d(
 					inputs=self.conv1_out, filters=64,
-					kernel_size=[4, 4], strides=[2, 2], padding="VALID",
-					kernel_initializer=tf.variance_scaling_initializer(scale=2),
-					activation=tf.nn.relu, use_bias=False, name='conv2')
+					kernel_size=[4, 4], strides=2, padding="SAME",
+					kernel_initializer=tf.variance_scaling_initializer(),
+					name='conv2')
 
 				self.conv2_out = tf.nn.relu(self.conv2, name='conv2_out')
 
 			with tf.name_scope("conv3"):
 				self.conv3 = tf.layers.conv2d(
 					inputs=self.conv2_out, filters=64,
-					kernel_size=[3, 3], strides=[1, 1], padding="VALID",
-					kernel_initializer=tf.variance_scaling_initializer(scale=2),
+					kernel_size=[3, 3], strides=1, padding="SAME",
+					kernel_initializer=tf.variance_scaling_initializer(),
 					name="conv3")
 
 				self.conv3_out = tf.nn.relu(self.conv3, name='conv3_out')
@@ -89,17 +92,17 @@ class DQN(object):
 			with tf.name_scope("fc1"):
 				self.fc1 = tf.layers.dense(inputs=self.flatten,
 				                           units=512, activation=tf.nn.relu,
-				                           kernel_initializer=tf.contrib.layers.xavier_initializer(), name="fc1")
+				                           kernel_initializer=tf.variance_scaling_initializer(), name="fc1")
 
 			with tf.name_scope("fc1"):
 				self.fc2 = tf.layers.dense(inputs=self.flatten,
 				                           units=512, activation=tf.nn.relu,
-				                           kernel_initializer=tf.contrib.layers.xavier_initializer(), name="fc2")
+				                           kernel_initializer=tf.variance_scaling_initializer(), name="fc2")
 
 			with tf.name_scope("outputs"):
 				self.outputs = tf.layers.dense(inputs=self.fc2,
 				                               units=action_size,
-				                               kernel_initializer=tf.contrib.layers.xavier_initializer(),
+				                               kernel_initializer=tf.variance_scaling_initializer(),
 				                               activation=None)
 		# Output is the approximated Action Values Q(s,a), so we don't need any activation
 
@@ -146,14 +149,16 @@ with tf.variable_scope("train"):
 
 	# global_step is used to keep track of number of training steps completed
 	global_step = tf.Variable(0, trainable=False, name='global_step')
-	optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-08,
-	                                   use_locking=False, name='Adam')
+	optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, decay=rmsprop_decay, momentum=0.0,
+	                                      epsilon=rmsprop_constant, name='RMSProp')
+	# optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-08,
+	#                                    use_locking=False, name='Adam')
 	training_op = optimizer.minimize(loss, global_step=global_step)
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
 
-replay_memory_size = 200000
+replay_memory_size = 400000
 
 
 # replay_memory = deque([],maxlen=replay_memory_size)
@@ -220,7 +225,7 @@ total_reward=0
 game_length=0
 game_counter=0
 
-checkpoint_path="./mspacman_dqn_run5_nohup.ckpt"
+checkpoint_path="./mspacman_dqn_run6_nohup.ckpt"
 
 with tf.Session(config=session_conf) as sess:
 	if os.path.isfile(checkpoint_path + ".index"):
@@ -327,7 +332,7 @@ with tf.Session(config=session_conf) as sess:
 		if step % save_steps == 0:
 			saver.save(sess, checkpoint_path)
 			# save output to text
-			with open('pacman_run5_each_episode_reward.txt', 'w') as file:
+			with open('pacman_run6_each_episode_reward.txt', 'w') as file:
 				file.write('%s\n' % final_each_episode_rwds)
-			with open('pacman_run5_mean_max_q.txt', 'w') as file:
+			with open('pacman_run6_mean_max_q.txt', 'w') as file:
 				file.write('%s\n' % final_mean_max_q)
